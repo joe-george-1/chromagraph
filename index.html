@@ -1,0 +1,595 @@
+<title>Chromagraph</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Outfit:wght@300;400;500;600;700&display=swap">
+
+<style>
+  :root {
+    --bg: #5a5a5a;
+    --surface: #5a5a5a;
+    --border: #4a4a4a;
+    --text: #ffffff;
+    --text-dim: #cccccc;
+    --text-muted: #999999;
+    --caret: #ffffff;
+    --op-bg: #5a5a5a;
+    --op-hover: #505050;
+    --shadow: 0 1px 3px rgba(0,0,0,0.2);
+    --block-border: rgba(0,0,0,0.1);
+    --char-glow: 0 0 14px currentColor;
+    --calc-glow: 0 0 10px currentColor;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Outfit', system-ui, -apple-system, sans-serif;
+    padding-block: 28px 40px;
+    padding-inline: 24px;
+    min-height: 100vh;
+    box-sizing: border-box;
+  }
+
+  .header {
+    max-width: 1100px;
+    margin: 0 auto 24px;
+    display: flex;
+    align-items: baseline;
+    gap: 14px;
+  }
+  .header h1 {
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    margin: 0;
+    line-height: 1;
+  }
+  .header h1 span { text-shadow: var(--char-glow); }
+  .header .sub {
+    font-size: 13px;
+    color: var(--text-muted);
+    font-weight: 300;
+    letter-spacing: 0.02em;
+  }
+
+  .app {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 20px;
+    max-width: 1100px;
+    margin: 0 auto;
+    align-items: start;
+  }
+
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    overflow: hidden;
+  }
+  .panel-label {
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    padding: 14px 20px 0;
+    margin: 0;
+  }
+
+  /* ---- Text panel ---- */
+  .text-section { border-bottom: 1px solid var(--border); }
+
+  .text-editor {
+    position: relative;
+    min-height: 180px;
+  }
+  .text-overlay {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    overflow: hidden;
+    z-index: 1;
+  }
+  .text-overlay-inner {
+    padding: 10px 20px 20px;
+    font-family: 'Outfit', system-ui, sans-serif;
+    font-size: 39px;
+    font-weight: 500;
+    line-height: 1.5;
+    white-space: pre-wrap;
+    overflow-wrap: break-word;
+    word-break: break-word;
+  }
+  .text-overlay-inner .ch {
+    text-shadow: var(--char-glow);
+  }
+  .text-overlay-inner .ph {
+    color: var(--text-muted);
+    font-weight: 300;
+  }
+  .text-input {
+    display: block;
+    width: 100%;
+    min-height: 180px;
+    padding: 10px 20px 20px;
+    font-family: 'Outfit', system-ui, sans-serif;
+    font-size: 39px;
+    font-weight: 500;
+    line-height: 1.5;
+    white-space: pre-wrap;
+    overflow-wrap: break-word;
+    word-break: break-word;
+    color: transparent;
+    caret-color: var(--caret);
+    background: transparent;
+    border: none;
+    outline: none;
+    resize: vertical;
+    box-sizing: border-box;
+    position: relative;
+    z-index: 2;
+  }
+
+  .blocks-section { padding-bottom: 20px; }
+  .blocks-display {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px 18px;
+    align-items: flex-start;
+    padding: 10px 20px 0;
+    min-height: 44px;
+  }
+  .blocks-line-break {
+    flex-basis: 100%;
+    height: 0;
+  }
+  .word-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0;
+  }
+  .letter-block {
+    width: 23px;
+    height: 30px;
+    border: 1px solid var(--block-border);
+    box-shadow: var(--shadow);
+    flex-shrink: 0;
+  }
+  .letter-block:hover { transform: scale(1.15); z-index: 1; }
+
+  /* ---- Spatial panel ---- */
+  .spatial-section {
+    padding-bottom: 20px;
+    border-top: 1px solid var(--border);
+  }
+  .spatial-display {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px 18px;
+    align-items: flex-start;
+    padding: 10px 20px 0;
+    min-height: 44px;
+  }
+  .spatial-line-break {
+    flex-basis: 100%;
+    height: 0;
+  }
+  .spatial-word-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2px;
+  }
+  .key-card {
+    width: 50px;
+    height: 18px;
+    border: 1px solid rgba(255,255,255,0.12);
+    background: rgba(0,0,0,0.15);
+    flex-shrink: 0;
+    position: relative;
+  }
+  .key-card:hover { transform: scale(1.15); z-index: 1; }
+  .key-dot {
+    position: absolute;
+    width: 5px;
+    height: 5px;
+    border-radius: 1px;
+    transform: translate(-50%, -50%);
+  }
+
+  /* ---- Calculator panel ---- */
+  .calc-panel { display: flex; flex-direction: column; }
+
+  .calc-display-wrap {
+    padding: 16px 20px 12px;
+    border-bottom: 1px solid var(--border);
+    overflow: hidden;
+  }
+  .calc-display {
+    min-height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 3px;
+    flex-wrap: wrap;
+  }
+  .calc-display::-webkit-scrollbar { display: none; }
+  .calc-block {
+    width: 28px;
+    height: 28px;
+    flex-shrink: 0;
+  }
+  .calc-char {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 28px;
+    font-weight: 500;
+    line-height: 28px;
+    color: var(--text);
+  }
+
+  .calc-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 6px;
+    padding: 14px;
+  }
+  .calc-btn {
+    aspect-ratio: 1;
+    border: none;
+    font-family: 'Outfit', system-ui, sans-serif;
+    font-size: 18px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .calc-btn:active { transform: scale(0.92); }
+  .calc-btn:focus-visible { outline: 2px solid var(--text-dim); outline-offset: 2px; }
+
+  .calc-btn.op {
+    background: var(--op-bg);
+    color: var(--text);
+  }
+  .calc-btn.op:hover { background: var(--op-hover); }
+
+  .calc-btn.num { box-shadow: var(--shadow); }
+  .calc-btn.num:hover { filter: brightness(1.12); }
+
+  .calc-btn.zero {
+    grid-column: span 2;
+    aspect-ratio: auto;
+  }
+  .calc-btn.eq {
+    grid-row: span 2;
+    aspect-ratio: auto;
+    background: var(--text);
+    color: var(--bg);
+    font-size: 22px;
+  }
+  .calc-btn.eq:hover { opacity: 0.88; }
+  .calc-btn.eq:active { opacity: 0.78; transform: scale(0.95); }
+
+  .calc-btn.active-op {
+    outline: 2px solid var(--text);
+    outline-offset: -2px;
+  }
+
+  @media (max-width: 780px) {
+    body { padding-block: 16px 32px; }
+    .app { grid-template-columns: 1fr; }
+    .header { margin-bottom: 16px; }
+    .text-overlay-inner, .text-input { font-size: 30px; }
+    .letter-block { width: 18px; height: 24px; }
+    .key-card { width: 38px; height: 14px; }
+    .key-dot { width: 4px; height: 4px; }
+    .calc-block { width: 22px; height: 22px; }
+    .calc-char { font-size: 22px; line-height: 22px; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .letter-block, .calc-btn { transition: none; }
+  }
+</style>
+
+<header class="header">
+  <h1 id="wordmark"></h1>
+  <span class="sub">modeling alphanumeric synesthesia</span>
+</header>
+
+<main class="app">
+  <div class="left-col">
+    <div class="panel text-panel">
+      <section class="text-section">
+        <p class="panel-label">Text</p>
+        <div class="text-editor">
+          <div class="text-overlay" aria-hidden="true">
+            <div class="text-overlay-inner" id="overlay"></div>
+          </div>
+          <textarea class="text-input" id="input" spellcheck="false" autocomplete="off" autocapitalize="off">Thank you for visiting Dr Wissner Gross. Please feel free to experiment with this tool</textarea>
+        </div>
+      </section>
+      <section class="blocks-section">
+        <p class="panel-label">Spectrum</p>
+        <div class="blocks-display" id="blocks"></div>
+      </section>
+      <section class="spatial-section">
+        <p class="panel-label">Position</p>
+        <div class="spatial-display" id="spatial"></div>
+      </section>
+    </div>
+  </div>
+
+  <div class="right-col">
+    <div class="panel calc-panel">
+      <p class="panel-label">Calculator</p>
+      <div class="calc-display-wrap">
+        <div class="calc-display" id="calcDisplay"></div>
+      </div>
+      <div class="calc-grid" id="calcGrid"></div>
+    </div>
+  </div>
+</main>
+
+<footer style="max-width:1100px;margin:32px auto 0;text-align:right;font-size:11px;color:#888;font-weight:300;letter-spacing:0.02em;">made by Joe George with Claude Opus 4.6. For more color theory work please see <a href="https://joe-george-1.github.io/chromatone/">Chromatone</a>. <a href="https://www.instagram.com/joe_george_/">Instagram</a></footer>
+
+<script>
+const COLORS = {
+  A:'#e6cd76', B:'#3e367c', C:'#f4dc3b', D:'#5a412a',
+  E:'#23567e', F:'#a95e24', G:'#361f2b', H:'#f0e2ac',
+  I:'#262626', J:'#84191d', K:'#e7923e', L:'#343468',
+  M:'#1e1510', N:'#64ad33', O:'#FFFFFF', P:'#f8eb96',
+  Q:'#1d4279', R:'#9f1111', S:'#de6b0f', T:'#17921c',
+  U:'#e6c939', V:'#9d7111', W:'#22517f', X:'#ba8331',
+  Y:'#f88f13', Z:'#955000',
+  '0':'#d6d6d6','1':'#000000','2':'#dbe48f',
+  '3':'#1c80a5','4':'#35a838','5':'#b81919',
+  '6':'#86549d','7':'#c26400','8':'#135175','9':'#e6d45b'
+};
+
+function getColor(ch) { return COLORS[ch.toUpperCase()] || null; }
+
+const QWERTY_POS = {
+  '1':[11.7,18.5],'2':[19.0,18.5],'3':[26.3,18.5],'4':[33.6,18.5],
+  '5':[40.9,18.5],'6':[48.2,18.5],'7':[55.5,18.5],'8':[62.8,18.5],
+  '9':[70.1,18.5],'0':[77.4,18.5],
+  'Q':[22.6,39.5],'W':[29.9,39.5],'E':[37.2,39.5],'R':[44.5,39.5],
+  'T':[51.8,39.5],'Y':[59.1,39.5],'U':[66.4,39.5],'I':[73.7,39.5],
+  'O':[81.0,39.5],'P':[88.3,39.5],
+  'A':[24.4,60.5],'S':[31.7,60.5],'D':[39.0,60.5],'F':[46.3,60.5],
+  'G':[53.7,60.5],'H':[61.0,60.5],'J':[68.3,60.5],'K':[75.6,60.5],
+  'L':[82.9,60.5],
+  'Z':[28.1,81.5],'X':[35.4,81.5],'C':[42.7,81.5],'V':[50.0,81.5],
+  'B':[57.3,81.5],'N':[64.6,81.5],'M':[71.9,81.5]
+};
+
+function esc(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ---- Wordmark ----
+const wmEl = document.getElementById('wordmark');
+wmEl.innerHTML = 'chromagraph'.split('').map(ch => {
+  const c = getColor(ch);
+  return c ? `<span style="color:${c}">${ch}</span>` : ch;
+}).join('');
+
+// ---- Text coloring ----
+const inputEl = document.getElementById('input');
+const overlayEl = document.getElementById('overlay');
+const blocksEl = document.getElementById('blocks');
+const spatialEl = document.getElementById('spatial');
+
+function updateText() {
+  const text = inputEl.value;
+  if (!text) {
+    overlayEl.innerHTML = '<span class="ph">Type to see colors…</span>';
+  } else {
+    overlayEl.innerHTML = Array.from(text).map(ch => {
+      const c = getColor(ch);
+      return c ? `<span class="ch" style="color:${c}">${esc(ch)}</span>` : esc(ch);
+    }).join('');
+  }
+  updateBlocks(text);
+  updateSpatial(text);
+}
+
+function updateBlocks(text) {
+  blocksEl.innerHTML = '';
+  if (!text) return;
+  const lines = text.split('\n');
+  lines.forEach((line, li) => {
+    const words = line.split(/(\s+)/);
+    for (const seg of words) {
+      if (/^\s+$/.test(seg)) continue;
+      const group = document.createElement('div');
+      group.className = 'word-group';
+      let hasBlock = false;
+      for (const ch of seg) {
+        const c = getColor(ch);
+        if (c) {
+          const b = document.createElement('div');
+          b.className = 'letter-block';
+          b.style.backgroundColor = c;
+          b.title = ch.toUpperCase();
+          group.appendChild(b);
+          hasBlock = true;
+        }
+      }
+      if (hasBlock) blocksEl.appendChild(group);
+    }
+    if (li < lines.length - 1) {
+      const br = document.createElement('div');
+      br.className = 'blocks-line-break';
+      blocksEl.appendChild(br);
+    }
+  });
+}
+
+function updateSpatial(text) {
+  spatialEl.innerHTML = '';
+  if (!text) return;
+  const lines = text.split('\n');
+  lines.forEach((line, li) => {
+    const words = line.split(/(\s+)/);
+    for (const seg of words) {
+      if (/^\s+$/.test(seg)) continue;
+      const group = document.createElement('div');
+      group.className = 'spatial-word-group';
+      let hasCard = false;
+      for (const ch of seg) {
+        const c = getColor(ch);
+        const pos = QWERTY_POS[ch.toUpperCase()];
+        if (c && pos) {
+          const card = document.createElement('div');
+          card.className = 'key-card';
+          card.title = ch.toUpperCase();
+          const dot = document.createElement('div');
+          dot.className = 'key-dot';
+          dot.style.backgroundColor = c;
+          dot.style.left = pos[0] + '%';
+          dot.style.top = pos[1] + '%';
+          card.appendChild(dot);
+          group.appendChild(card);
+          hasCard = true;
+        }
+      }
+      if (hasCard) spatialEl.appendChild(group);
+    }
+    if (li < lines.length - 1) {
+      const br = document.createElement('div');
+      br.className = 'spatial-line-break';
+      spatialEl.appendChild(br);
+    }
+  });
+}
+
+inputEl.addEventListener('input', updateText);
+inputEl.addEventListener('scroll', () => {
+  overlayEl.style.transform = `translateY(-${inputEl.scrollTop}px)`;
+});
+
+updateText();
+
+// ---- Calculator ----
+const calcDisplayEl = document.getElementById('calcDisplay');
+const calcGridEl = document.getElementById('calcGrid');
+
+const calc = {
+  display: '0',
+  first: null,
+  op: null,
+  waiting: false,
+  fresh: true
+};
+
+function evaluate(a, op, b) {
+  a = parseFloat(a); b = parseFloat(b);
+  switch(op) {
+    case '+': return a + b;
+    case '−': return a - b;
+    case '×': return a * b;
+    case '÷': return b !== 0 ? a / b : NaN;
+  }
+  return b;
+}
+
+function fmtResult(v) {
+  if (!isFinite(v)) return 'Error';
+  const s = parseFloat(v.toPrecision(12)).toString();
+  return s.length > 14 ? v.toExponential(6) : s;
+}
+
+function press(val) {
+  if (val >= '0' && val <= '9') {
+    if (calc.waiting || calc.fresh) {
+      calc.display = val;
+      calc.waiting = false;
+      calc.fresh = false;
+    } else {
+      calc.display = calc.display === '0' ? val : calc.display + val;
+    }
+  } else if (val === '.') {
+    if (calc.waiting || calc.fresh) {
+      calc.display = '0.';
+      calc.waiting = false;
+      calc.fresh = false;
+    } else if (!calc.display.includes('.')) {
+      calc.display += '.';
+    }
+  } else if (['+','−','×','÷'].includes(val)) {
+    if (calc.op && !calc.waiting && !calc.fresh) {
+      const res = evaluate(calc.first, calc.op, calc.display);
+      calc.display = fmtResult(res);
+    }
+    calc.first = calc.display;
+    calc.op = val;
+    calc.waiting = true;
+    calc.fresh = false;
+  } else if (val === '=') {
+    if (calc.op && calc.first !== null) {
+      const res = evaluate(calc.first, calc.op, calc.display);
+      calc.display = fmtResult(res);
+      calc.op = null;
+      calc.first = null;
+      calc.fresh = true;
+    }
+  } else if (val === 'C') {
+    calc.display = '0';
+    calc.first = null;
+    calc.op = null;
+    calc.waiting = false;
+    calc.fresh = true;
+  } else if (val === '⌫') {
+    if (calc.display.length > 1 && calc.display !== 'Error') {
+      calc.display = calc.display.slice(0, -1);
+    } else {
+      calc.display = '0';
+    }
+    calc.fresh = false;
+  }
+  renderCalc();
+}
+
+function renderCalc() {
+  const text = String(calc.display);
+  calcDisplayEl.innerHTML = Array.from(text).map(ch => {
+    const c = COLORS[ch];
+    if (c) return `<span class="calc-block" style="background:${c}" title="${ch}"></span>`;
+    return `<span class="calc-char">${esc(ch)}</span>`;
+  }).join('');
+
+  calcGridEl.querySelectorAll('.calc-btn.op').forEach(btn => {
+    btn.classList.toggle('active-op', calc.op === btn.dataset.val && calc.waiting);
+  });
+}
+
+// Build calculator buttons
+const layout = [
+  {v:'C', type:'op'}, {v:'⌫', type:'op'}, {v:'÷', type:'op'}, {v:'×', type:'op'},
+  {v:'7', type:'num'}, {v:'8', type:'num'}, {v:'9', type:'num'}, {v:'−', type:'op'},
+  {v:'4', type:'num'}, {v:'5', type:'num'}, {v:'6', type:'num'}, {v:'+', type:'op'},
+  {v:'1', type:'num'}, {v:'2', type:'num'}, {v:'3', type:'num'}, {v:'=', type:'eq'},
+  {v:'0', type:'num', cls:'zero'}, {v:'.', type:'op'},
+];
+
+for (const btn of layout) {
+  const el = document.createElement('button');
+  el.className = 'calc-btn ' + (btn.type === 'eq' ? 'eq' : btn.type) + (btn.cls ? ' '+btn.cls : '');
+  el.dataset.val = btn.v;
+
+  if (btn.type === 'num') {
+    const c = COLORS[btn.v];
+    if (c) el.style.backgroundColor = c;
+    el.title = btn.v;
+    el.setAttribute('aria-label', btn.v);
+  } else {
+    el.textContent = btn.v;
+  }
+
+  el.addEventListener('click', () => press(btn.v));
+  calcGridEl.appendChild(el);
+}
+
+renderCalc();
+</script>
